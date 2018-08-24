@@ -29,6 +29,29 @@ module.exports = {
         };
         dirTree(path);
         return systems;
+    },
+
+    getDevSystems: () => {
+        var systems = {};
+        var path = 'custom_data/eve_universe';
+    
+        const dirTree = source => {
+            var dirs = getDirectories(source)
+            if (dirs.length == 0) {
+                var sourceRel = source.replace(path + '/', '');
+                let systemData = sourceRel.split('/');
+                var sysData = yaml.safeLoad(readFileSync(source + '/solarsystem.staticdata', 'utf8'));
+                systems[sysData.solarSystemID] = {
+                    "security": sysData.security,
+                    "name": systemData[2]
+                };
+            }
+            else {
+                dirs.forEach(dir => dirTree(dir));
+            }
+        };
+        dirTree(path);
+        return systems;
     }
 };
 

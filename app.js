@@ -1,18 +1,24 @@
+
 const systems = require('./ei-parse-systems.js');
 const eilog = require('./ei-log.js');
+const output = require('./ei-output.js');
 const yaml = require('js-yaml');
 const fs = require('fs');
 const axios = require('axios');
+
+let dev = true;
 
 function log(level, s) {
     eilog.log(level, s);
 }
 
 log(0, "Parsing systems...");
-var eveSystems = systems.getSystems();
+var eveSystems = dev ? systems.getDevSystems() : systems.getSystems();
 
 log(0, "Parsing types...");
-const typeIDs = yaml.safeLoad(fs.readFileSync('./sde/fsd/typeIDs.yaml', 'utf8'));
+
+let typeIDFile = dev ? './custom_data/typeID_pyroxeres.yml' : './sde/fsd/typeIDs.yaml';
+const typeIDs = yaml.safeLoad(fs.readFileSync(typeIDFile, 'utf8'));
 var tidByGid = {};
 
 log(0, "Building market groups...");
@@ -31,8 +37,8 @@ for (tidKey of Object.keys(typeIDs)) {
 
 // console.log(tidByGid);
 log(0, "Ready");
-var sellPrices = []
-var buyPrices = []
+var sellOrders = []
+var buyOrders = []
 
 //
 // Helpers
@@ -50,69 +56,10 @@ const nameOfType = (typeID) => {
     return typeIDs[typeID].name["en"]
 }
 
-const formatIsk = (price) => {
-    if (price)
-        return price.toLocaleString('en-US') + " ISK "
-    else
-        return 'err';
-}
-
 const randomItemKey = (obj) => {
     var keyIdx = Math.floor(Math.random() * Object.keys(obj).length);
     return Object.keys(obj)[keyIdx];
 }
-
-const printPrice = (logLevel, title, priceObj) => {
-    if (!priceObj) {
-        log(logLevel, title + '  unknown');
-        return;
-    }
-    var res = title + formatIsk(priceObj.price);
-    res += " in " + priceObj.system;
-    res += " (region: " + priceObj.region + ")";
-    log(logLevel, res);
-}
-
-const calcMargin = (sellPrice, buyPrice) => {
-    let ppi = buyPrice - sellPrice
-    return Math.round(100 *(100*ppi/buyPrice))/100;
-}
-
-const printPriceDetails = (buyObj, sellObj, verbose) => {
-    if (!sellObj || !sellObj) {
-        logLevel(3, 'error printing price details');
-        return;
-    }
-    let quantity = Math.min(sellObj.details.volume_remain, buyObj.details.volume_remain);
-    let ppi = buyObj.price - sellObj.price
-    let profit = quantity * (buyObj.price - sellObj.price)
-    let volume = typeIDs[buyObj.details.type_id].volume
-    let margin = calcMargin(sellObj.price, buyObj.price)
-    let ppv = ppi / volume;
-    let p = verbose ? '+' : ' '
-    let ll = 1;
-
-    if (verbose) {
-        log(ll, "    SELL: " + sellObj.request);
-        log(ll, "    BUY:  " + buyObj.request);
-        log(ll, "    ---------------------  ")
-        log(ll, "   | SELL order details  | ")
-        log(ll, "    ---------------------  ")
-        log(ll, sellObj.details)
-        log(ll, "    ---------------------  ")
-        log(ll, "   |  BUY order details  | ")
-        log(ll, "    ---------------------  ")
-        log(ll, buyObj.details)
-        log(ll, ' ');
-    }
-    log(ll,p+' Projected profit: ' + formatIsk(profit))
-    log(ll, '            ISK/m3: ' + formatIsk(ppv))
-    log(ll, '          ISK/item: ' + formatIsk(ppi))
-    log(ll, '            margin: ' + margin + "%")
-    log(ll, '          quantity: ' + quantity)
-    log(ll, '                m3: ' + quantity * volume)
-}
-
 
 // 
 // Main methods
@@ -120,27 +67,25 @@ const printPriceDetails = (buyObj, sellObj, verbose) => {
 
 async function startProcess() {
 
-    // for (; ;) {
-    //     await sleep(7500);
-    //     var typeId = '43807'
+    if (dev) {
+        var typeId = '1224'
+        var name = nameOfType(typeId);
+        await doItem(typeId);
+        return;
+    }
+
+    // for (;;) {
+    //     var typeId = randomItemKey(typeIDs);
     //     var name = nameOfType(typeId);
+    //     if (!name || name.endsWith("Blueprint")) continue;
+    //     if (name.startsWith("Crates of")) continue;
+    //     if (!typeIDs[typeId].published) continue;
     //     await doItem(typeId);
     // }
-
-    // marketGroupID: 1033
-
-    for (;;) {
-        var typeId = randomItemKey(typeIDs);
-        var name = nameOfType(typeId);
-        if (!name || name.endsWith("Blueprint")) continue;
-        if (name.startsWith("Crates of")) continue;
-        if (!typeIDs[typeId].published) continue;
-        await doItem(typeId);
-    }
     
     
     var gidRanges = [
-        [422, 423, "Isotopes"],
+        [422, 438, "Isotopes"],
         [450, 462, "Ores"],
         [467, 469, "Ores"],
         [1304, 1304, "Generic Decryptor"],
@@ -174,12 +119,11 @@ async function startProcess() {
 startProcess();
 
 function recursiveSupplyDemandCheck(supply, demand, isSupply) {
-    const bestSell = supply[0];
-    const bestBuy = demand[0];
+    const sell = supply[0];
+    const buy = demand[0];
 
-    if (bestBuy && bestSell) {
-        if (calcMargin(bestSell.price, bestBuy.price) > 2) { // profit margin > 2%
-            
+    if (buy && sell) {
+        if (output.calcMargin(sell.bestPrice, buy.bestPrice) > 2) { // profit margin > 2%
             if (isSupply) {
                 log(1, '<--- SUPPLY check')
                 supply.shift();
@@ -188,10 +132,10 @@ function recursiveSupplyDemandCheck(supply, demand, isSupply) {
                 demand.shift();
             }
 
-            printPrice(1, '   - best buy:  ', bestBuy);
-            printPrice(1, '   - best sell: ', bestSell);
-            log(       1, '   - margin: ' + calcMargin(bestSell.price, bestBuy.price) + "%");
-            printPriceDetails(bestBuy, bestSell, false);
+            output.printPrice(1, '   - best buy:  ', buy);
+            output.printPrice(1, '   - best sell: ', sell);
+            log(       1, '   - margin: ' + output.calcMargin(sell.bestPrice, buy.bestPrice) + "%");
+            printPriceDetails(buy, sell, false, typeIDs);
 
             recursiveSupplyDemandCheck(supply, demand, isSupply)
         }
@@ -201,46 +145,46 @@ function recursiveSupplyDemandCheck(supply, demand, isSupply) {
 async function doItem(typeID) {
     var start = Date.now();
 
-    await scanRegionalMarkets(typeID);
+    await scanRegionalMarkets(typeID);    
+
     const priceSort = (a, b) => {
-        if (a.price < b.price) return -1;
-        if (a.price > b.price) return 1;
+        if (a.bestPrice < b.bestPrice) return -1;
+        if (a.bestPrice > b.bestPrice) return 1;
         return 0;
     }
 
-    
+    sellOrders = sellOrders.sort(priceSort);
+    buyOrders = buyOrders.sort(priceSort).reverse();
 
-    sellPrices = sellPrices.sort(priceSort);
-    buyPrices = buyPrices.sort(priceSort).reverse();
+    const sell = sellOrders[0];
+    const buy = buyOrders[0];
 
-    const bestSell = sellPrices[0];
-    const bestBuy = buyPrices[0];
-
-    if (bestBuy && bestSell) {
-        if (calcMargin(bestSell.price, bestBuy.price) > 2) { // profit margin > 2%
+    if (buy && sell) {
+        // profit margin > 2%
+        if (dev || output.calcMargin(sell.bestPrice, buy.bestPrice) > 2) { 
             log(1, '\n\n\n');
             log(1, ' * Item: ' + nameOfType(typeID) + ' ('+typeID+') ')
-            printPrice(1, '   - best buy:  ', bestBuy);
-            printPrice(1, '   - best sell: ', bestSell);
-            log(       1, '   - margin: ' + calcMargin(bestSell.price, bestBuy.price) + "%");
-            printPriceDetails(bestBuy, bestSell, true);
+            output.printPrice(1, '   - best buy:  ', buy);
+            output.printPrice(1, '   - best sell: ', sell);
+            log(       1, '   - margin: ' + output.calcMargin(sell.bestPrice, buy.bestPrice) + "%");
+            output.printPriceDetails(buy, sell, true, typeIDs);
 
-            var supply = sellPrices.slice();
-            var demand = buyPrices.slice();
+            var supply = sellOrders.slice();
+            var demand = buyOrders.slice();
             supply.shift();
             demand.shift();
             recursiveSupplyDemandCheck(supply, demand, true)
 
-            supply = sellPrices.slice();
-            demand = buyPrices.slice();
+            supply = sellOrders.slice();
+            demand = buyOrders.slice();
             supply.shift();
             demand.shift();
             recursiveSupplyDemandCheck(supply, demand, false)
         } else {
             log(2, ' * Item: ' + nameOfType(typeID))
-            printPrice(2, '   - best buy:  ', bestBuy);
-            printPrice(2, '   - best sell: ', bestSell);
-            log(       2, '   - margin: ' + calcMargin(bestSell.price, bestBuy.price) + "%");
+            printPrice(2, '   - best buy:  ', buy);
+            printPrice(2, '   - best sell: ', sell);
+            log(       2, '   - margin: ' + output.calcMargin(sell.bestPrice, buy.bestPrice) + "%");
         }
     }
 
@@ -249,8 +193,8 @@ async function doItem(typeID) {
     var elapsedSec = parseFloat(Math.round(elapsed / 1000 * 100) / 100).toFixed(2);
 
     log(2, elapsedSec + ' sec.');
-    sellPrices = [];
-    buyPrices = [];
+    sellOrders = [];
+    buyOrders = [];
 }
 
 
@@ -263,8 +207,8 @@ async function scanRegionalMarkets(typeId) {
         // const config = yaml.safeLoad(fs.readFileSync('./custom_data/regions_all_but_forge_domain.yml', 'utf8'));
         var promises = [];
         for (o of config) {
-            promises.push(requestDataForRegion(o.itemID, o.itemName, 'sell', typeId));
-            promises.push(requestDataForRegion(o.itemID, o.itemName, 'buy', typeId));
+            promises.push(requestOrdersForRegion(o.itemID, o.itemName, 'sell', typeId));
+            promises.push(requestOrdersForRegion(o.itemID, o.itemName, 'buy', typeId));
         }
         await Promise.all(promises);
     } catch (e) {
@@ -275,16 +219,18 @@ async function scanRegionalMarkets(typeId) {
 
 
 /// HTTP request method
-async function requestDataForRegion(regionId, regionName, type, typeId) {
+async function requestOrdersForRegion(regionId, regionName, type, typeId) {
     const url = 'https://esi.evetech.net/latest/markets/' + regionId + '/orders/?datasource=tranquility&order_type=' + type + '&page=1&type_id=' + typeId;
-    var bestPrice = null;
+    
 
     try {
         const response = await axios(url);
 
-        let result = response.data;
-        result.forEach(o => {
-            
+        var orders = response.data.filter((o) => {
+            // ignore lowsec
+            if (eveSystems[o.system_id].security >= 0.45) {
+                return true;
+            }
             // if (eveSystems[o.system_id].security >= 0.45) {
             //     if (type == 'buy') { 
             //         if (eveSystems[o.system_id].name != "Jita") continue
@@ -294,47 +240,38 @@ async function requestDataForRegion(regionId, regionName, type, typeId) {
             //     }
             // }
 
-            // ignore lowsec
-            if (eveSystems[o.system_id].security >= 0.45) {
-                if (type == 'sell') {
-                    if (!bestPrice || bestPrice.price > o.price) {
-                        bestPrice = o;
-                    }
-                } else {
-                    if (!bestPrice || bestPrice.price < o.price) {
-                        bestPrice = o;
-                    }
-                }
-            }
         });
+        const priceSort = (a, b) => {
+            if (a.price < b.price) return -1;
+            if (a.price > b.price) return 1;
+            return 0;
+        }
+        orders.sort(priceSort);
 
-        if (bestPrice && bestPrice != undefined) {
-            const sec = eveSystems[bestPrice.system_id].security;
-            const systemName = eveSystems[bestPrice.system_id].name + ' ' + Math.round(sec * 10) / 10;
-            var res = "";
+        // best buy order is most expensive
+        if (type == 'buy') {
+            orders.reverse();
+        }
+
+        let bestOrder = orders.length > 0 ? orders[0] : null;
+        if (bestOrder) {
+            const sec = eveSystems[bestOrder.system_id].security;
+            const systemName = eveSystems[bestOrder.system_id].name + ' ' + Math.round(sec * 10) / 10;
+            var targetArray = null
             if (type == 'sell') {
-                res = "lowest sell price";
-                sellPrices.push({
-                    price: bestPrice.price,
-                    region: regionName,
-                    system: systemName,
-                    details: bestPrice,
-                    request: url
-                });
+                targetArray = sellOrders;
             } else if (type == 'buy') {
-                res = "heighest buy price";
-                buyPrices.push({
-                    price: bestPrice.price,
-                    region: regionName,
-                    system: systemName,
-                    details: bestPrice,
-                    request: url
-                });
+                targetArray = buyOrders;
             }
-            res += ' in' + regionName;
-            res += ": " + formatIsk(bestPrice.price);
-            res += " (" + eveSystems[bestPrice.system_id].name + ")";
-            res += " ss: " + sec;
+            // best region price
+            targetArray.push({
+                bestPrice: bestOrder.price,
+                region: regionName,
+                system: systemName,
+                details: bestOrder,
+                request: url,
+                regionOrders: orders
+            });
         } else {
             // console.log("error: " + url);
             // console.log("no " + type + " orders in " + regionName);
