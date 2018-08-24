@@ -7,6 +7,14 @@ function log(level, s) {
 const formatAmount = (n) => {
     return n.toLocaleString('ru-RU').replace(',', ' ');
 }
+
+const formatIsk = (price) => {
+    if (price)
+        return price.toLocaleString('en-US') + " ISK"
+    else
+        return 'err';
+}
+
 const timeAgo = (ms) => {
     var delta = Math.abs(Date.now() - ms) / 1000;
     var days = Math.floor(delta / 86400);
@@ -30,20 +38,28 @@ const timeAbs = (ms) => {
 
 
 module.exports = {
-    printOrderData: (ll, data) => {
+    printRawOrderData: (ll, data) => {
         let volume = formatAmount(data.volume_remain) + ' / ' + formatAmount(data.volume_total);
-        log(ll, '     issued: ' + timeAgo(Date.parse(data.issued)) + ' (' + timeAbs(Date.parse(data.issued)) + ')');
-        log(ll, '      price: ' + module.exports.formatIsk(data.price))
-        log(ll, ' min_volume: ' + formatAmount(data.min_volume))
-        log(ll, '     volume: ' + volume)
-        log(ll, '         -- ')
-        log(ll, '     typeID: ' + data.type_id)
-        log(ll, '   systemID: ' + data.system_id)
-        log(ll, '    orderID: ' + data.order_id)
-        log(ll, '     typeID: ' + data.location_id)
+        let issued = timeAgo(Date.parse(data.issued))
+        let absolute = timeAbs(Date.parse(data.issued))
+        log(ll, ' *   issued: \'' + issued + '\' (' + absolute + ')');
+        log(ll, ' *    price: ' + formatIsk(data.price))
+        log(ll, ' *   volume: ' + volume + ' (min: ' +formatAmount(data.min_volume)+ ')')
+        // log(ll, '     typeID: ' + data.type_id)
+        // log(ll, '   systemID: ' + data.system_id)
+        // log(ll, '    orderID: ' + data.order_id)
+        // log(ll, '     typeID: ' + data.location_id)
     },
 
-    printPriceDetails: (buyObj, sellObj, verbose, typeIDs) => {
+    printOrderShort: (buy, sell, typeID, name, ll) => {
+        let margin =  module.exports.calcMargin(sell.bestPrice, buy.bestPrice);
+        log(                      ll, ' * Item: ' + name + ' ('+typeID+') ')
+        module.exports.printPrice(ll, '   - best buy:  ', buy);
+        module.exports.printPrice(ll, '   - best sell: ', sell);
+        log(                      ll, '   - margin: ' + margin + "%");
+    },
+
+    printOrderDetails: (buyObj, sellObj, verbose, typeIDs) => {
         if (!sellObj || !sellObj) {
             logLevel(3, 'error printing price details');
             return;
@@ -60,29 +76,22 @@ module.exports = {
         if (verbose) {
             log(ll, "    SELL: " + sellObj.request);
             log(ll, "    BUY:  " + buyObj.request);
-            log(ll, "    ---------------------  ")
-            log(ll, "   | SELL order details  | ")
-            log(ll, "    ---------------------  ")
-            module.exports.printOrderData(ll, sellObj.details);
-            log(ll, "    ---------------------  ")
-            log(ll, "   |  BUY order details  | ")
-            log(ll, "    ---------------------  ")
-            module.exports.printOrderData(ll, buyObj.details);
+            log(ll, "    ---------------------  type: " + sellObj.details.type_id)
+            log(ll, "   | SELL order details  | order: " + sellObj.details.order_id)
+            log(ll, "    ---------------------  location: " + sellObj.details.location_id)
+            module.exports.printRawOrderData(ll, sellObj.details);
+            log(ll, "    ---------------------  type: " + buyObj.details.type_id)
+            log(ll, "   |  BUY order details  | order: " + buyObj.details.order_id)
+            log(ll, "    ---------------------  location: " + buyObj.details.location_id)
+            module.exports.printRawOrderData(ll, buyObj.details);
             log(ll, ' ');
         }
-        log(ll, p + ' Projected profit: ' + module.exports.formatIsk(profit))
-        log(ll, '            ISK/m3: ' + module.exports.formatIsk(ppv))
-        log(ll, '          ISK/item: ' + module.exports.formatIsk(ppi))
+        log(ll, p + ' Projected profit: \'' + formatIsk(profit) + '\'')
+        log(ll, '                m3: \'' + formatAmount(Math.round(quantity * volume))+ '\'')
+        log(ll, '            ISK/m3: ' + formatIsk(ppv))
+        log(ll, '          ISK/item: ' + formatIsk(ppi))
         log(ll, '            margin: ' + margin + "%")
-        log(ll, '          quantity: ' + quantity)
-        log(ll, '                m3: ' + quantity * volume)
-    },
-
-    formatIsk: (price) => {
-        if (price)
-            return price.toLocaleString('en-US') + " ISK "
-        else
-            return 'err';
+        log(ll, '          quantity: ' + formatAmount(quantity))
     },
 
     printPrice: (logLevel, title, priceObj) => {
@@ -90,9 +99,9 @@ module.exports = {
             log(logLevel, title + '  unknown');
             return;
         }
-        var res = title + module.exports.formatIsk(priceObj.price);
-        res += " in " + priceObj.system;
-        res += " (region: " + priceObj.region + ")";
+        var res = title + formatIsk(priceObj.bestPrice);
+        res += " in '" + priceObj.system + "'";
+        res += " (region: '" + priceObj.region + "')";
         log(logLevel, res);
     },
     calcMargin: (sellPrice, buyPrice) => {

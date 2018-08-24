@@ -163,11 +163,8 @@ async function doItem(typeID) {
         // profit margin > 2%
         if (dev || output.calcMargin(sell.bestPrice, buy.bestPrice) > 2) { 
             log(1, '\n\n\n');
-            log(1, ' * Item: ' + nameOfType(typeID) + ' ('+typeID+') ')
-            output.printPrice(1, '   - best buy:  ', buy);
-            output.printPrice(1, '   - best sell: ', sell);
-            log(       1, '   - margin: ' + output.calcMargin(sell.bestPrice, buy.bestPrice) + "%");
-            output.printPriceDetails(buy, sell, true, typeIDs);
+            output.printOrderShort(buy, sell, typeID, nameOfType(typeID), 1);
+            output.printOrderDetails(buy, sell, true, typeIDs);
 
             var supply = sellOrders.slice();
             var demand = buyOrders.slice();
@@ -181,10 +178,7 @@ async function doItem(typeID) {
             demand.shift();
             recursiveSupplyDemandCheck(supply, demand, false)
         } else {
-            log(2, ' * Item: ' + nameOfType(typeID))
-            printPrice(2, '   - best buy:  ', buy);
-            printPrice(2, '   - best sell: ', sell);
-            log(       2, '   - margin: ' + output.calcMargin(sell.bestPrice, buy.bestPrice) + "%");
+            output.printOrderShort(buy, sell, typeID, nameOfType(typeID), 2);
         }
     }
 
@@ -201,10 +195,13 @@ async function doItem(typeID) {
 async function scanRegionalMarkets(typeId) {
     try {
         log(2, "Scanning market for '" + nameOfType(typeId) + "' id: " + typeId);
-        // const config = yaml.safeLoad(fs.readFileSync('./custom_data/regions_domain_heimatar.yml', 'utf8'));
-        // const config = yaml.safeLoad(fs.readFileSync('./custom_data/regions_all_highsec.yml', 'utf8'));
-        const config = yaml.safeLoad(fs.readFileSync('./custom_data/regions_domain_forge.yml', 'utf8'));
-        // const config = yaml.safeLoad(fs.readFileSync('./custom_data/regions_all_but_forge_domain.yml', 'utf8'));
+        const config = dev ?
+             yaml.safeLoad(fs.readFileSync('./custom_data/regions_domain_forge.yml', 'utf8'))
+             :
+             yaml.safeLoad(fs.readFileSync('./custom_data/regions_domain_heimatar.yml', 'utf8'));
+            //  yaml.safeLoad(fs.readFileSync('./custom_data/regions_all_highsec.yml', 'utf8'));
+            //  yaml.safeLoad(fs.readFileSync('./custom_data/regions_domain_forge.yml', 'utf8'));
+            //  yaml.safeLoad(fs.readFileSync('./custom_data/regions_all_but_forge_domain.yml', 'utf8'));
         var promises = [];
         for (o of config) {
             promises.push(requestOrdersForRegion(o.itemID, o.itemName, 'sell', typeId));
