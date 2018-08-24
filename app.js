@@ -6,7 +6,7 @@ const yaml = require('js-yaml');
 const fs = require('fs');
 const axios = require('axios');
 
-let dev = true;
+let dev = false;
 
 function log(level, s) {
     eilog.log(level, s);
@@ -74,14 +74,14 @@ async function startProcess() {
         return;
     }
 
-    // for (;;) {
-    //     var typeId = randomItemKey(typeIDs);
-    //     var name = nameOfType(typeId);
-    //     if (!name || name.endsWith("Blueprint")) continue;
-    //     if (name.startsWith("Crates of")) continue;
-    //     if (!typeIDs[typeId].published) continue;
-    //     await doItem(typeId);
-    // }
+    for (;;) {
+        var typeId = randomItemKey(typeIDs);
+        var name = nameOfType(typeId);
+        if (!name || name.endsWith("Blueprint")) continue;
+        if (name.startsWith("Crates of")) continue;
+        if (!typeIDs[typeId].published) continue;
+        await doItem(typeId);
+    }
     
     
     var gidRanges = [
@@ -186,7 +186,7 @@ async function doItem(typeID) {
     var elapsed = end - start;
     var elapsedSec = parseFloat(Math.round(elapsed / 1000 * 100) / 100).toFixed(2);
 
-    log(2, elapsedSec + ' sec.');
+    log(2,'  ' + elapsedSec + ' sec.');
     sellOrders = [];
     buyOrders = [];
 }

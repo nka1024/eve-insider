@@ -53,7 +53,7 @@ module.exports = {
 
     printOrderShort: (buy, sell, typeID, name, ll) => {
         let margin =  module.exports.calcMargin(sell.bestPrice, buy.bestPrice);
-        log(                      ll, ' * Item: ' + name + ' ('+typeID+') ')
+        log(                      ll, ' * Item: "' + name + '" ('+typeID+') ')
         module.exports.printPrice(ll, '   - best buy:  ', buy);
         module.exports.printPrice(ll, '   - best sell: ', sell);
         log(                      ll, '   - margin: ' + margin + "%");
@@ -86,12 +86,18 @@ module.exports = {
             module.exports.printRawOrderData(ll, buyObj.details);
             log(ll, ' ');
         }
-        log(ll, p + ' Projected profit: \'' + formatIsk(profit) + '\'')
+        log(ll, p + ' Projected profit: \'' + formatIsk(Math.round(profit)) + '\'')
         log(ll, '                m3: \'' + formatAmount(Math.round(quantity * volume))+ '\'')
         log(ll, '            ISK/m3: ' + formatIsk(ppv))
         log(ll, '          ISK/item: ' + formatIsk(ppi))
         log(ll, '            margin: ' + margin + "%")
         log(ll, '          quantity: ' + formatAmount(quantity))
+        log(ll, ' ');
+        log(ll, '  ***  ' + formatIsk(Math.round(profit)) + 
+                '  ***  ' + Math.round(quantity * volume) + " m3" +
+                '  ***  "' + typeIDs[buyObj.details.type_id].name['en'] + '"' +
+                '  *** "' + sellObj.region + '" -> "' + buyObj.region + '"' );
+
     },
 
     printPrice: (logLevel, title, priceObj) => {

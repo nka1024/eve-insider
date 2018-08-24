@@ -1,1 +1,0 @@
- sed 's/,//g' | awk '{sum+=$3} END{printf("%s.2 ISK\n",sum)}' 
