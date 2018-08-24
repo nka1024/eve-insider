@@ -1,0 +1,4 @@
+ 
+cat result.txt | grep Projected | sed 's/,//g' | awk '{sum+=$3} END{printf("%s.2 ISK\n",sum)}' | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta'
+cat result.txt | grep Projected | sed 's/,//g' | awk '{sum+=$4} END{printf("%s.2 ISK\n",sum)}' | sed -e :a -e 's/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/;ta'
+cat result.txt | grep Projected > overview.txt
