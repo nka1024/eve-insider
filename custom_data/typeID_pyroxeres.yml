@@ -1,0 +1,48 @@
+1224:
+    basePrice: 11632.0
+    description:
+        de: 'Pyroxeres ist eine interessante Erzart, da es eigentlich in jeder Hinsicht
+            ganz normal ist, mit einer Ausnahme: Bei intensiver Aufbereitung erhält
+            man auch ein wenig Nocxium, was den Wert von Pyroxeres beträchtlich steigert.
+            Es enthält außerdem zu großen Teilen Tritanium, sowie etwas Pyerite und
+            Mexallon. Zu finden in Sonnensystemen der Stufe <color=''0xFF4DFFCC''>0.9</color>
+            oder darunter.'
+        en: "Pyroxeres is an interesting ore type, as it is very plain in most respects
+            except one - deep core reprocessing yields a little bit of nocxium, increasing
+            its value considerably. It also has a large portion of tritanium and some
+            pyerite and mexallon.\r\n\r\nAvailable in <color='0xFF4DFFCC'>0.9</color>
+            security status solar systems or lower."
+        fr: 'Le pyroxeres est un minerai brut intéressant car il est tout à fait banal,
+            à ceci près qu''un retraitement poussé permet d''obtenir un peu de nocxium
+            et donc d''accroître sa valeur. Il contient également une grande proportion
+            de tritanium, de pyérite et de mexallon.
+
+
+            Disponible dans les systèmes solaires de statut de sécurité <color=''0xFF4DFFCC''>0,9</color>
+            ou inférieur.'
+        ja: パイロゼリースはこれといって特徴のない鉱石だが、再処理すると中心部からごく少量のノキシウムが抽出できるため、それを目当てに探し求める者もいる。多量のトリタニウムを含み、少量のパイライトとメクサロンも採れる。セキュリティステータスが<color='0xFF4DFFCC'>0.9</color>以下のソーラーシステムに存在する。
+        ru: Изюминка Pyroxeres на первый взгляд незаметна. При тщательной переработке
+            этой внешне обычной руды из неё удаётся извлечь небольшое количество Nocxium,
+            что значительно увеличивает её ценность. Она также содержит значительную
+            массовую долю Tritanium и некоторое количество Pyerite и Mexallon.<br><br>
+            Скопления астероидов, содержащих эту руду, можно встретить в планетных
+            системах со степенью соответствия нормам КОНКОРДа <color='0xFF4DFFCC'>0.9</color>
+            и ниже.
+        zh: '干焦岩是一种有趣的矿石，它在很多方面都很普通，只有一点除外，即经过深层核心提炼，干焦岩可以产出一小点超新星诺克石，从而使其价值突升。它还含有大量的三钛合金，以及一些类晶体胶矿和类银超金属。
+
+
+            你可以在安全等级<color=''0xFF4DFFCC''>0.9</color>及以下的星系找到它。'
+    groupID: 459
+    iconID: 231
+    marketGroupID: 515
+    mass: 1.0e+35
+    name:
+        de: Pyroxeres
+        en: Pyroxeres
+        fr: Pyroxeres
+        ja: パイロゼリーズ
+        ru: Pyroxeres
+        zh: 干焦岩
+    portionSize: 100
+    published: true
+    volume: 0.3
